@@ -108,11 +108,11 @@ def train(epoch):
         optimizer.step()
 
         train_loss += loss.item()
-        _, predicted = outputs.max(1)
-        total += targets.size(0)
-        correct += predicted.eq(targets).sum().item()
+        _, predicted = outputs.max(1) #找出每行的最大值，如果括号内是0代表找出每列的最大值
+        total += targets.size(0)      #总行数
+        correct += predicted.eq(targets).sum().item()  ##将所有的值相加，得到的仍是tensor类别的int值，item转成python数字(int)
 
-        progress_bar(batch_idx, len(trainloader), 'Loss: %.3f | Acc: %.3f%% (%d/%d)'
+        progress_bar(batch_idx, len(trainloader), 'Loss: %.3f | Acc: %.3f%% (%d/%d)'  #??怎么有两个百分号
                      % (train_loss/(batch_idx+1), 100.*correct/total, correct, total))
 
 
@@ -122,7 +122,7 @@ def test(epoch):
     test_loss = 0
     correct = 0
     total = 0
-    with torch.no_grad():
+    with torch.no_grad():                                           #当我们在做 evaluating 的时候（不需要计算导数），我们可以将推断（inference）的代码包裹在 with torch.no_grad(): 之中，以达到暂时不追踪网络参数中的导数的目的，总之是为了减少可能存在的计算和内存消耗。
         for batch_idx, (inputs, targets) in enumerate(testloader):
             inputs, targets = inputs.to(device), targets.to(device)
             outputs = net(inputs)
@@ -141,7 +141,7 @@ def test(epoch):
     if acc > best_acc:
         print('Saving..')
         state = {
-            'net': net.state_dict(),
+            'net': net.state_dict(), #A state_dict is simply a Python dictionary object that maps each layer to its parameter tensor. 
             'acc': acc,
             'epoch': epoch,
         }
