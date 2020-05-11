@@ -15,21 +15,21 @@ import torch.nn.init as init
 def get_mean_and_std(dataset):
     '''Compute the mean and std value of dataset.'''
     dataloader = torch.utils.data.DataLoader(dataset, batch_size=1, shuffle=True, num_workers=2)
-    mean = torch.zeros(3)
+    mean = torch.zeros(3)   #tensor([0., 0., 0.])
     std = torch.zeros(3)
     print('==> Computing mean and std..')
     for inputs, targets in dataloader:
         for i in range(3):
-            mean[i] += inputs[:,i,:,:].mean()
+            mean[i] += inputs[:,i,:,:].mean()  #？？4维？mean不是3维么
             std[i] += inputs[:,i,:,:].std()
-    mean.div_(len(dataset))
+    mean.div_(len(dataset))                    #不懂.div_()
     std.div_(len(dataset))
     return mean, std
 
 def init_params(net):
     '''Init layer parameters.'''
     for m in net.modules():
-        if isinstance(m, nn.Conv2d):
+        if isinstance(m, nn.Conv2d):      #check m is nn.Conv2d (batchsize,Cout,Hout,Wout) or not
             init.kaiming_normal(m.weight, mode='fan_out')
             if m.bias:
                 init.constant(m.bias, 0)
