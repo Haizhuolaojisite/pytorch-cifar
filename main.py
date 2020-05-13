@@ -28,11 +28,11 @@ start_epoch = 0  # start from epoch 0 or last checkpoint epoch
 # Data
 print('==> Preparing data..')
 transform_train = transforms.Compose([
-    transforms.RandomCrop(32, padding=4), #在一个随机的位置进行裁剪,上下左右均填充4个pixel，若为3232，则会变成4040
-    transforms.RandomHorizontalFlip(),  #依据概率p对PIL图片进行水平翻转 参数： p- 概率，默认值为0.5
+    transforms.RandomCrop(32, padding=4), #先上下左右均填充4个pixel，若为3232，则会变成4040，再把图像在一个随机的位置进行裁剪，裁剪成32*32
+    transforms.RandomHorizontalFlip(),  #依据概率p对PIL图片进行水平翻转 参数：p- 概率，默认值为0.5：图像一半的概率翻转，一半的概率不翻转
     transforms.ToTensor(),
-    transforms.Normalize((0.4914, 0.4822, 0.4465), (0.2023, 0.1994, 0.2010)),
-]) #mean and std, 但是为什么是3个值，代表什么呢？
+    transforms.Normalize((0.4914, 0.4822, 0.4465), (0.2023, 0.1994, 0.2010)), #mean and std, R,G,B每层的归一化用到的均值和方差
+]) 
 
 transform_test = transforms.Compose([
     transforms.ToTensor(),
@@ -40,16 +40,16 @@ transform_test = transforms.Compose([
 ])
 
 trainset = torchvision.datasets.CIFAR10(
-    root='./data', train=True, download=True, transform=transform_train)
+    root='./data', train=True, download=True, transform=transform_train) # 表示是否需要对数据进行预处理，none为不进行预处理
 trainloader = torch.utils.data.DataLoader(
-    trainset, batch_size=128, shuffle=True, num_workers=2)
+    trainset, batch_size=128, shuffle=True, num_workers=2) #多线程来读数据
 
 testset = torchvision.datasets.CIFAR10(
     root='./data', train=False, download=True, transform=transform_test)
 testloader = torch.utils.data.DataLoader(
     testset, batch_size=100, shuffle=False, num_workers=2)
 #num_workers这个参数必须大于等于0，0的话表示数据导入在主进程中进行，其他大于0的数表示通过多个进程来导入数据，可以加快数据导入速度
-#batch_size每次输入数据的行数;PyTorch训练模型时调用数据不是一行一行进行的（这样太没效率），而是一捆一捆来的
+#batch_size每次输入数据的行数; PyTorch训练模型时调用数据不是一行一行进行的（这样太没效率），而是一捆一捆来的
 #shuffle(Bool)默认设置是False。将输入数据的顺序打乱，是为了使数据更有独立性，但如果数据是有序列特征的，就不要设置成True了
 classes = ('plane', 'car', 'bird', 'cat', 'deer',
            'dog', 'frog', 'horse', 'ship', 'truck')
@@ -72,14 +72,16 @@ print('==> Building model..')
 net = RegNetX_200MF()
 net = net.to(device)
 if device == 'cuda':
-    net = torch.nn.DataParallel(net)  #因为pytorch定义的网络模型参数默认放在gpu 0上，所以dataparallel实质是可以看做把训练参数从gpu拷贝到其他的gpu同时训练，此时在dataloader加载数据的时候，batch_size是需要设置成原来大小的n倍，n即gpu的数量。
+    net = torch.nn.DataParallel(net)  #因为pytorch定义的网络模型参数默认放在gpu 0上，所以dataparallel实质是可以看做 
+                                      #把训练参数从gpu拷贝到其他的gpu同时训练，此时在dataloader加载数据的时候,
+                                      #batch_size是需要设置成原来大小的n倍，n即gpu的数量。
     cudnn.benchmark = True
 #如果网络的输入数据维度或类型上变化不大，设置  torch.backends.cudnn.benchmark = true  可以增加运行效率；
 #如果网络的输入数据在每次 iteration 都变化的话，会导致 cnDNN 每次都会去寻找一遍最优配置，这样反而会降低运行效率。
 
 if args.resume:
     # Load checkpoint.
-    print('==> Resuming from checkpoint..')
+    print('==> Resuming from checkpoint..')                         #这是什么文件
     assert os.path.isdir('checkpoint'), 'Error: no checkpoint directory found!' #判断某一路径是否为目录
     checkpoint = torch.load('./checkpoint/ckpt.pth')  # 加载模型文件，pt, pth 文件都可以
     net.load_state_dict(checkpoint['net']) 
@@ -92,7 +94,6 @@ optimizer = optim.SGD(net.parameters(), lr=args.lr,
 
 # Training
 
-
 def train(epoch):
     print('\nEpoch: %d' % epoch)
     net.train()
@@ -100,7 +101,7 @@ def train(epoch):
     correct = 0
     total = 0
     for batch_idx, (inputs, targets) in enumerate(trainloader):  
-        inputs, targets = inputs.to(device), targets.to(device)  #.to(device)是自定义的么？怎么知道是在哪个文件里定义的
+        inputs, targets = inputs.to(device), targets.to(device)  #.to(device)是必须的么？
         optimizer.zero_grad()
         outputs = net(inputs)
         loss = criterion(outputs, targets)
@@ -108,7 +109,7 @@ def train(epoch):
         optimizer.step()
 
         train_loss += loss.item()
-        _, predicted = outputs.max(1) #找出每行的最大值，如果括号内是0代表找出每列的最大值
+        _, predicted = outputs.max(1) #找出每行的最大值对应的列index
         total += targets.size(0)      #总行数
         correct += predicted.eq(targets).sum().item()  ##将所有的值相加，得到的仍是tensor类别的int值，item转成python数字(int)
 
